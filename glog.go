@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -40,6 +41,11 @@ var config = Config{
 	warningHandlers: []io.Writer{},
 	errorHandlers:   []io.Writer{},
 }
+
+var logs map[string]*Log
+
+// format regex
+var fmtRe = regexp.MustCompile(`%\((t|n|f|l|m)\)`)
 
 func getFrame(skipFrames int) runtime.Frame {
 	// Source: https://stackoverflow.com/questions/35212985/is-it-possible-get-information-about-caller-function-in-golang
@@ -83,11 +89,24 @@ func GetLog() Log {
 	name := myCallerFile()
 	parts := strings.Split(name, "/")
 	name = strings.Split(parts[len(parts)-1], ".")[0]
-	return Log{
+	l := Log{
 		name,
 		false,
 		&config,
 	}
+	logs[l.Name] = &l // store reference to log in logs map
+	return l
+}
+
+// attempts to retrieve an active logger and return it
+// returns nil if no log was found
+func FetchLog(name string) *Log {
+	l, ok := logs[name]
+	if ok {
+		return l
+	}
+
+	return nil
 }
 
 func writeToHandlers(msg string, handlers []io.Writer) error {
@@ -141,8 +160,6 @@ func formatMsg(l *Log, time time.Time, msg string, level int) string {
 	*/
 	var data []interface{}
 
-	// can this function be optimized ?
-
 	// create data array with the data corresponding to the data codes in the correct order
 	chars := len(config.format)
 	for i := 0; i <= chars-4; i++ {
@@ -170,13 +187,8 @@ func formatMsg(l *Log, time time.Time, msg string, level int) string {
 		}
 	}
 
-	f := config.format
-	// remove data codes and leave formatting codes
-	f = strings.ReplaceAll(f, "%(f)", "%")
-	f = strings.ReplaceAll(f, "%(n)", "%")
-	f = strings.ReplaceAll(f, "%(l)", "%")
-	f = strings.ReplaceAll(f, "%(t)", "%")
-	f = strings.ReplaceAll(f, "%(m)", "%")
+	// remove data codes and leave formatting codes for sprintf
+	f := fmtRe.ReplaceAllString(config.format, "%")
 
 	// apply formatting and return the formatted string
 	return fmt.Sprintf(f, data...)
@@ -199,7 +211,7 @@ func log(l *Log, level int, msg string) {
 	}
 
 	// format msg
-	msg = formatMsg(l, time.Now(), msg, level)
+	msg = formatMsg(l, time.Now(), msg, level) + "\n"
 
 	handlers := config.handlers
 	if level == 30 && len(config.warningHandlers) > 0 {
