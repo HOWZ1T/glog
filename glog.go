@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -14,7 +15,7 @@ type Config struct {
 	format          string
 	datefmt         string
 	level           int
-	handlers        []io.Writer // general handlers for NOTSET to INFO and default for WARN, ERROR and CRITICAL
+	handlers        []io.Writer // general handlers for NOTSET, DEBUG and INFO. Default for WARN, ERROR and CRITICAL if warning and error handlers are not given.
 	warningHandlers []io.Writer
 	errorHandlers   []io.Writer // handles error and critical writers
 }
@@ -43,6 +44,7 @@ var config = Config{
 }
 
 var logs map[string]*Log
+var lock = &sync.Mutex{}
 
 // format regex
 var fmtRe = regexp.MustCompile(`%\((t|n|f|l|m)\)`)
@@ -76,6 +78,10 @@ func myCallerFunc() string {
 	return getFrame(2).Function
 }
 
+func myCallerFuncWithSkip(skip int) string {
+	return getFrame(2 + skip).Function
+}
+
 // myCallerFile returns the file name of the caller that called it
 func myCallerFile() string {
 	return getFrame(2).File
@@ -83,24 +89,46 @@ func myCallerFile() string {
 
 func Configure(cnf Config) { config = cnf }
 
+// instantiates a singleton of logs slice if necessary
+func instantiate() {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if logs == nil {
+		// instantiate singleton logs
+		logs = make(map[string]*Log)
+	}
+}
+
 // returns a logger object to the caller
-func GetLog() Log {
+func GetLog() *Log {
+	instantiate() // makes sure singleton is instantiated if necessary
+
 	// remove leading file path and trailing file extension to retrieve the module name only.
 	name := myCallerFile()
 	parts := strings.Split(name, "/")
 	name = strings.Split(parts[len(parts)-1], ".")[0]
-	l := Log{
+
+	// check if logger is already defined, if so return it
+	l, ok := logs[name]
+	if ok {
+		return l
+	}
+
+	l = &Log{
 		name,
 		false,
 		&config,
 	}
-	logs[l.Name] = &l // store reference to log in logs map
+
+	logs[l.Name] = l // store reference to log in logs map
 	return l
 }
 
 // attempts to retrieve an active logger and return it
 // returns nil if no log was found
 func FetchLog(name string) *Log {
+	instantiate() // makes sure singleton is instantiated if necessary
 	l, ok := logs[name]
 	if ok {
 		return l
@@ -166,7 +194,7 @@ func formatMsg(l *Log, time time.Time, msg string, level int) string {
 		set := config.format[i : i+4]
 		switch set {
 		case "%(f)":
-			data = append(data, myCallerFunc())
+			data = append(data, myCallerFuncWithSkip(2)) // skipping 2 frames to get the actual caller function
 			break
 
 		case "%(n)":
@@ -211,12 +239,12 @@ func log(l *Log, level int, msg string) {
 	}
 
 	// format msg
-	msg = formatMsg(l, time.Now(), msg, level) + "\n"
+	msg = formatMsg(l, time.Now(), msg, level)
 
 	handlers := config.handlers
-	if level == 30 && len(config.warningHandlers) > 0 {
+	if level == WARNING && len(config.warningHandlers) > 0 {
 		handlers = config.warningHandlers
-	} else if level > 30 && len(config.errorHandlers) > 0 {
+	} else if level > WARNING && len(config.errorHandlers) > 0 {
 		handlers = config.errorHandlers
 	}
 
