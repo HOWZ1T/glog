@@ -12,12 +12,12 @@ import (
 )
 
 type Config struct {
-	format          string
-	datefmt         string
-	level           int
-	handlers        []io.Writer // general handlers for NOTSET, DEBUG and INFO. Default for WARN, ERROR and CRITICAL if warning and error handlers are not given.
-	warningHandlers []io.Writer
-	errorHandlers   []io.Writer // handles error and critical writers
+	Format          string
+	DateFMT         string
+	Level           int
+	Handlers        []io.Writer // general Handlers for NOTSET, DEBUG and INFO. Default for WARN, ERROR and CRITICAL if warning and error Handlers are not given.
+	WarningHandlers []io.Writer
+	ErrorHandlers   []io.Writer // handles error and critical writers
 }
 
 type Log struct {
@@ -35,18 +35,18 @@ const ERROR = 40
 const CRITICAL = 50
 
 var config = Config{
-	format:          "%(t)s | %(n)20s | %(f)30s() | %(l)8s | %(m)s",
-	datefmt:         "%b %d %H:%M:%S",
-	level:           NOTSET,
-	handlers:        []io.Writer{os.Stdout},
-	warningHandlers: []io.Writer{},
-	errorHandlers:   []io.Writer{},
+	Format:          "%(t)s | %(n)20s | %(f)30s() | %(l)8s | %(m)s",
+	DateFMT:         "%b %d %H:%M:%S",
+	Level:           NOTSET,
+	Handlers:        []io.Writer{os.Stdout},
+	WarningHandlers: []io.Writer{},
+	ErrorHandlers:   []io.Writer{},
 }
 
 var logs map[string]*Log
 var lock = &sync.Mutex{}
 
-// format regex
+// Format regex
 var fmtRe = regexp.MustCompile(`%\((t|n|f|l|m)\)`)
 
 func getFrame(skipFrames int) runtime.Frame {
@@ -138,7 +138,7 @@ func FetchLog(name string) *Log {
 }
 
 func writeToHandlers(msg string, handlers []io.Writer) error {
-	// logs data to handlers
+	// logs data to Handlers
 	for _, handler := range handlers {
 		_, err := handler.Write([]byte(msg))
 		if err != nil {
@@ -179,19 +179,19 @@ func formatMsg(l *Log, time time.Time, msg string, level int) string {
 		key:
 		X = number for padding
 
-		format codes:
+		Format codes:
 		%(f)Xs               | function name                     e.g.: %(func)20s
 		%(n)Xs               | log name                          e.g.: %(name)20s
-		%(l)Xs               | level name                        e.g.: %(level)20s
+		%(l)Xs               | Level name                        e.g.: %(Level)20s
 		%(t)Xs               | time (formatted using dateFmt)    e.g.: %(time)20s
 		%(m)Xs               | message                           e.g.: %(msg)20s
 	*/
 	var data []interface{}
 
 	// create data array with the data corresponding to the data codes in the correct order
-	chars := len(config.format)
+	chars := len(config.Format)
 	for i := 0; i <= chars-4; i++ {
-		set := config.format[i : i+4]
+		set := config.Format[i : i+4]
 		switch set {
 		case "%(f)":
 			data = append(data, myCallerFuncWithSkip(2)) // skipping 2 frames to get the actual caller function
@@ -206,7 +206,7 @@ func formatMsg(l *Log, time time.Time, msg string, level int) string {
 			break
 
 		case "%(t)":
-			data = append(data, getDateTime(time, config.datefmt))
+			data = append(data, getDateTime(time, config.DateFMT))
 			break
 
 		case "%(m)":
@@ -216,7 +216,7 @@ func formatMsg(l *Log, time time.Time, msg string, level int) string {
 	}
 
 	// remove data codes and leave formatting codes for sprintf
-	f := fmtRe.ReplaceAllString(config.format, "%")
+	f := fmtRe.ReplaceAllString(config.Format, "%")
 
 	// apply formatting and return the formatted string
 	return fmt.Sprintf(f, data...)
@@ -228,8 +228,8 @@ func log(l *Log, level int, msg string) {
 		return
 	}
 
-	// compare config level against the requested log level
-	if !(level >= config.level) {
+	// compare config Level against the requested log Level
+	if !(level >= config.Level) {
 		return
 	}
 
@@ -238,14 +238,14 @@ func log(l *Log, level int, msg string) {
 		msg += "\n"
 	}
 
-	// format msg
+	// Format msg
 	msg = formatMsg(l, time.Now(), msg, level)
 
-	handlers := config.handlers
-	if level == WARNING && len(config.warningHandlers) > 0 {
-		handlers = config.warningHandlers
-	} else if level > WARNING && len(config.errorHandlers) > 0 {
-		handlers = config.errorHandlers
+	handlers := config.Handlers
+	if level == WARNING && len(config.WarningHandlers) > 0 {
+		handlers = config.WarningHandlers
+	} else if level > WARNING && len(config.ErrorHandlers) > 0 {
+		handlers = config.ErrorHandlers
 	}
 
 	err := writeToHandlers(msg, handlers)

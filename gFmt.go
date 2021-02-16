@@ -174,7 +174,7 @@ var dateCodes = map[rune]func(time time.Time) string{
 		_, offset := time.Zone()
 
 		// convert offset from seconds to hours and minutes
-		// format HHMM where H is hour and M is minute
+		// Format HHMM where H is hour and M is minute
 
 		sign := "+"
 		if offset < 0 {
