@@ -45,7 +45,7 @@ func TestFormatMsg(t *testing.T) {
 	Configure(cnf)
 
 	// test
-	expected := "Nov 17 20:34:58 |            glog_test |             glog.TestFormatMsg() |    DEBUG | " +
+	expected := "Nov 17 20:34:58 |            glog_test | github.com/HOWZ1T/glog.TestFormatMsg() |    DEBUG | " +
 		"This is a test"
 	got := emulateLogCall(formatMsg, l,
 		time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC),
@@ -82,11 +82,11 @@ func TestLogging(t *testing.T) {
 	l.Critical("Critical Test")
 
 	expected :=
-`           glog_test |               glog.TestLogging() |    DEBUG | Debug Test
-           glog_test |               glog.TestLogging() |     INFO | Info Test
-           glog_test |               glog.TestLogging() |     WARN | Warning Test
-           glog_test |               glog.TestLogging() |    ERROR | Error Test
-           glog_test |               glog.TestLogging() | CRITICAL | Critical Test` + "\n"
+		`           glog_test | github.com/HOWZ1T/glog.TestLogging() |    DEBUG | Debug Test
+           glog_test | github.com/HOWZ1T/glog.TestLogging() |     INFO | Info Test
+           glog_test | github.com/HOWZ1T/glog.TestLogging() |     WARN | Warning Test
+           glog_test | github.com/HOWZ1T/glog.TestLogging() |    ERROR | Error Test
+           glog_test | github.com/HOWZ1T/glog.TestLogging() | CRITICAL | Critical Test` + "\n"
 
 	got := buf.String()
 
