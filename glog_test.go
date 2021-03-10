@@ -93,4 +93,16 @@ func TestLogging(t *testing.T) {
 	if got != expected {
 		t.Errorf("Result was incorrect:\ngot:\n%s\n\nexpected:\n%s\n", got, expected)
 	}
+
+	buf.Reset()
+	l.Debugf("Debug %s", "Test")
+	l.Infof("Info %s", "Test")
+	l.Warnf("Warning %s", "Test")
+	l.Errorf("Error %s", "Test")
+	l.Criticalf("Critical %s", "Test")
+	got = buf.String()
+
+	if got != expected {
+		t.Errorf("Result was incorrect:\ngot:\n%s\n\nexpected:\n%s\n", got, expected)
+	}
 }

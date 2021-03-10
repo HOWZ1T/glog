@@ -278,3 +278,23 @@ func (l *Log) Error(msg string) {
 func (l *Log) Critical(msg string) {
 	log(l, CRITICAL, msg)
 }
+
+func (l *Log) Debugf(format string, args ...interface{}) {
+	log(l, DEBUG, fmt.Sprintf(format, args...))
+}
+
+func (l *Log) Infof(format string, args ...interface{}) {
+	log(l, INFO, fmt.Sprintf(format, args...))
+}
+
+func (l *Log) Warnf(format string, args ...interface{}) {
+	log(l, WARNING, fmt.Sprintf(format, args...))
+}
+
+func (l *Log) Errorf(format string, args ...interface{}) {
+	log(l, ERROR, fmt.Sprintf(format, args...))
+}
+
+func (l *Log) Criticalf(format string, args ...interface{}) {
+	log(l, CRITICAL, fmt.Sprintf(format, args...))
+}
